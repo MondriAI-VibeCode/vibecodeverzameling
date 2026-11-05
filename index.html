@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Onderwijs Dashboard</title>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #1e293b;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 20px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      max-width: 1100px;
+      margin: 0 auto 30px auto;
+    }
+
+    h1 { margin: 0; }
+
+    .grid-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 20px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .tegel {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+      text-decoration: none;
+      color: inherit;
+      transition: transform 0.2s, box-shadow 0.2s;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .tegel:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+    }
+
+    .tegel .icoon { font-size: 2rem; margin-bottom: 10px; }
+    .tegel h3 { margin: 0 0 10px 0; }
+    .tegel .badge {
+      align-self: flex-start;
+      background: #e2e8f0;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+    }
+
+    /* Beheerderssectie */
+    .admin-btn {
+      background: #64748b;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    #admin-panel {
+      max-width: 600px;
+      margin: 30px auto;
+      background: white;
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+      display: none;
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+
+    .form-group input, .form-group textarea, .form-group select {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      box-sizing: border-box;
+    }
+
+    .submit-btn {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      width: 100%;
+    }
+
+    .status-msg {
+      margin-top: 15px;
+      padding: 10px;
+      border-radius: 6px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Onderwijs Modules</h1>
+    <button class="admin-btn" onclick="toggleAdminPanel()">⚙️ Beheer</button>
+  </header>
+
+  <!-- Dashboard Tegels -->
+  <main class="grid-container" id="tegel-container">
+    <p>Modules laden...</p>
+  </main>
+
+  <!-- Beheerders Paneel -->
+  <section id="admin-panel">
+    <h2>Nieuwe Module Uploaden</h2>
+    
+    <div class="form-group">
+      <label>GitHub Access Token (PAT):</label>
+      <input type="password" id="gh-token" placeholder="ghp_xxxxxxxxxxxx">
+      <small>Wordt lokaal in je browser opgeslagen.</small>
+    </div>
+
+    <div class="form-group">
+      <label>Repository (gebruikersnaam/repo-naam):</label>
+      <input type="text" id="gh-repo" placeholder="bijv. MondriAI-VibeCode/Cijferinvoerverwijzing">
+    </div>
+
+    <hr style="margin: 20px 0;">
+
+    <div class="form-group">
+      <label>Titel van de module:</label>
+      <input type="text" id="mod-titel" placeholder="bijv. Trainingsleer 1 - HF Zones">
+    </div>
+
+    <div class="form-group">
+      <label>Vak / Categorie:</label>
+      <input type="text" id="mod-vak" placeholder="bijv. Trainingsleer">
+    </div>
+
+    <div class="form-group">
+      <label>Icoon (Emoji):</label>
+      <input type="text" id="mod-icoon" value="📊">
+    </div>
+
+    <div class="form-group">
+      <label>HTML Script bestand:</label>
+      <input type="file" id="mod-file" accept=".html">
+    </div>
+
+    <button class="submit-btn" onclick="uploadModule()">Uploaden & Publiceren</button>
+    <div id="status" class="status-msg"></div>
+  </section>
+
+  <script>
+    // 1. Laden van tegels via modules.json
+    async function loadModules() {
+      const container = document.getElementById('tegel-container');
+      try {
+        const res = await fetch('modules.json?cache=' + Date.now());
+        if (!res.ok) throw new Error("Geen modules.json gevonden");
+        const modules = await res.json();
+        
+        container.innerHTML = '';
+        if (modules.length === 0) {
+          container.innerHTML = '<p>Nog geen modules toegevoegd.</p>';
+          return;
+        }
+
+        modules.forEach(item => {
+          container.innerHTML += `
+            <a href="${item.bestand}" class="tegel">
+              <div>
+                <div class="icoon">${item.icoon || '📄'}</div>
+                <h3>${item.titel}</h3>
+              </div>
+              <span class="badge">${item.vak}</span>
+            </a>
+          `;
+        });
+      } catch (err) {
+        container.innerHTML = '<p>Geen modules beschikbaar of modules.json ontbreekt.</p>';
+      }
+    }
+
+    // 2. Beheerderspaneel tonen/verbergen & token laden
+    function toggleAdminPanel() {
+      const panel = document.getElementById('admin-panel');
+      const isVisible = panel.style.display === 'block';
+      panel.style.display = isVisible ? 'none' : 'block';
+
+      if (!isVisible) {
+        document.getElementById('gh-token').value = localStorage.getItem('gh_pat') || '';
+        document.getElementById('gh-repo').value = localStorage.getItem('gh_repo') || '';
+      }
+    }
+
+    // 3. Bestand pushen naar GitHub via API
+    async function githubApiPut(repo, path, contentString, token, message) {
+      const url = `https://api.github.com/repos/${repo}/contents/${path}`;
+      
+      // Base64 encoding voor UTF-8 (geschikt voor HTML met speciale tekens)
+      const base64Content = btoa(unescape(encodeURIComponent(contentString)));
+      
+      const body = {
+        message: message,
+        content: base64Content,
+        branch: "main"
+      };
+
+      // Check of bestand al bestaat om de 'sha' op te halen voor een update
+      try {
+        const check = await fetch(url, { headers: { 'Authorization': `token ${token}` } });
+        if (check.ok) {
+          const data = await check.json();
+          body.sha = data.sha;
+        }
+      } catch(e) {}
+
+      const res = await fetch(url, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `token ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.message || 'Fout bij opslaan op GitHub');
+      }
+      return res.json();
+    }
+
+    // 4. Verwerken van de upload
+    async function uploadModule() {
+      const token = document.getElementById('gh-token').value.trim();
+      const repo = document.getElementById('gh-repo').value.trim();
+      const titel = document.getElementById('mod-titel').value.trim();
+      const vak = document.getElementById('mod-vak').value.trim();
+      const icoon = document.getElementById('mod-icoon').value.trim();
+      const fileInput = document.getElementById('mod-file');
+      const status = document.getElementById('status');
+
+      if (!token || !repo || !titel || !fileInput.files[0]) {
+        alert('Vul alle velden in en selecteer een bestand.');
+        return;
+      }
+
+      // Sla credentials lokaal op in de browser
+      localStorage.setItem('gh_pat', token);
+      localStorage.setItem('gh_repo', repo);
+
+      status.style.display = 'block';
+      status.style.background = '#e2e8f0';
+      status.innerText = 'Uploaden starten...';
+
+      try {
+        const file = fileInput.files[0];
+        const fileContent = await file.text();
+        
+        // Genereer een veilige bestandsnaam
+        const cleanFileName = file.name.toLowerCase().replace(/[^a-z0-9.]/g, '-');
+        const filePath = `modules/${cleanFileName}`;
+
+        // Stap A: HTML bestand uploaden naar /modules/
+        status.innerText = 'HTML script uploaden...';
+        await githubApiPut(repo, filePath, fileContent, token, `Add module: ${titel}`);
+
+        // Stap B: modules.json ophalen, bijwerken en uploaden
+        status.innerText = 'Tegelindex (modules.json) bijwerken...';
+        let currentModules = [];
+        try {
+          const jsonRes = await fetch(`https://raw.githubusercontent.com/${repo}/main/modules.json?cache=` + Date.now());
+          if (jsonRes.ok) currentModules = await jsonRes.json();
+        } catch(e) {}
+
+        // Voeg het nieuwe item toe
+        currentModules.push({
+          id: Date.now().toString(),
+          titel: titel,
+          vak: vak,
+          icoon: icoon,
+          bestand: filePath
+        });
+
+        await githubApiPut(repo, 'modules.json', JSON.stringify(currentModules, null, 2), token, `Update modules.json for ${titel}`);
+
+        status.style.background = '#dcfce7';
+        status.innerText = '✅ Succesvol geüpload! GitHub Pages heeft 1-2 minuten nodig om te vernieuwen.';
+        
+        // Formulier legen
+        document.getElementById('mod-titel').value = '';
+        fileInput.value = '';
+        
+        // Direct tegels opnieuw inladen
+        setTimeout(loadModules, 2000);
+
+      } catch (err) {
+        status.style.background = '#fee2e2';
+        status.innerText = '❌ Fout: ' + err.message;
+      }
+    }
+
+    // Pagina initialisatie
+    loadModules();
+  </script>
+</body>
+</html>
